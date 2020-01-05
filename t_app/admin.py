@@ -19,13 +19,20 @@ class SomeModelAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         ext = pathlib.Path(obj.file.url).suffix
         file_name = uuid.uuid4().hex
-        new_file_path = os.path.join(settings.MEDIA_ROOT, file_name)
+        new_file_path = os.path.join(settings.MEDIA_ROOT, 'files', file_name)
 
         if ext == '.mp4' and obj.file.size > two_and_half_megabytes:
+            path = f'{new_file_path}{ext}'
+            gif_path = f'{new_file_path}.gif'
+            with open(path, 'wb') as f:
+                f.write(obj.file.read())
             ff = ffmpy.FFmpeg(
-                inputs={obj.file.url: None},
-                outputs={f'{new_file_path}.gif': None})
+                inputs={path: None},
+                outputs={gif_path: None})
             ff.run()
+            with open(gif_path, 'rb') as f:
+                obj.file = ContentFile(f.read(), f'{file_name}.gif')
+
         elif ext != '.mp4':
             with open(path_to_default_file, 'rb') as f:
                 obj.file = ContentFile(f.read(), f'{file_name}.mp4')
